@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Download, Trash2, Square, Image as ImageIcon, Upload, FileSpreadsheet } from 'lucide-react';
+import { Download, Trash2, Square, Image as ImageIcon, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { validateUploadedSheet, formatValidationErrors } from '@/lib/sheet-validation';
@@ -55,10 +55,9 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
   const [fontSize, setFontSize] = useState(16);
   const [fontColor, setFontColor] = useState('#000000');
   const [backgroundColor, setBackgroundColor] = useState('#ffffff');
-  const [sheetData, setSheetData] = useState<any[]>([]);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [sheetImages, setSheetImages] = useState<string[]>([]);
   const [isUploadingSheet, setIsUploadingSheet] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // Load template image and setup canvas
   useEffect(() => {
@@ -90,29 +89,7 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
     img.src = templateUrl;
   }, [templateUrl]);
 
-  const redrawCanvas = useCallback(() => {
-    if (!canvasRef.current || !imageRef.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear and redraw template
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(imageRef.current, 0, 0, canvas.width, canvas.height);
-
-    // Draw all rectangles
-    rectangles.forEach((rect) => {
-      drawRectangle(ctx, rect, rect.id === selectedRectangle);
-    });
-
-    // Draw current rectangle being drawn
-    if (currentRect) {
-      drawRectangle(ctx, currentRect, false, true);
-    }
-  }, [rectangles, selectedRectangle, currentRect]);
-
-  const drawRectangle = (
+  const drawRectangle = useCallback((
     ctx: CanvasRenderingContext2D, 
     rect: Rectangle, 
     isSelected: boolean = false, 
@@ -143,7 +120,29 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
     ctx.fillStyle = isSelected ? '#ff0000' : '#0066cc';
     ctx.font = '12px Arial';
     ctx.fillText(label, x + 5, y + 15);
-  };
+  }, [canvasScale, rectangles]);
+
+  const redrawCanvas = useCallback(() => {
+    if (!canvasRef.current || !imageRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear and redraw template
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(imageRef.current, 0, 0, canvas.width, canvas.height);
+
+    // Draw all rectangles
+    rectangles.forEach((rect) => {
+      drawRectangle(ctx, rect, rect.id === selectedRectangle);
+    });
+
+    // Draw current rectangle being drawn
+    if (currentRect) {
+      drawRectangle(ctx, currentRect, false, true);
+    }
+  }, [rectangles, selectedRectangle, currentRect, drawRectangle]);
 
   useEffect(() => {
     redrawCanvas();
@@ -353,7 +352,6 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
       const validationResult = await validateSheetForImages(file);
 
       if (validationResult.isValid && validationResult.data) {
-        setSheetData(validationResult.data);
         setSheetImages(validationResult.imageUrls);
         toast.success(`Sheet uploaded successfully! Found ${validationResult.imageUrls.length} images.`);
       } else {
@@ -373,7 +371,7 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
   const validateSheetForImages = (file: File): Promise<{
     isValid: boolean;
     errors: string[];
-    data?: any[][];
+    data?: string[][];
     imageUrls: string[];
   }> => {
     return new Promise((resolve) => {
@@ -389,7 +387,7 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
           const worksheet = workbook.Sheets[sheetName];
           
           // Convert to array of arrays
-          const sheetData: any[][] = XLSX.utils.sheet_to_json(worksheet, { 
+          const sheetData: string[][] = XLSX.utils.sheet_to_json(worksheet, { 
             header: 1,
             defval: '' 
           });
@@ -420,7 +418,7 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
           // Extract image URLs from the image column
           const rawImageUrls = sheetData
             .slice(1) // Skip header row
-            .map((row: any[]) => row[imageColumnIndex])
+            .map((row: string[]) => row[imageColumnIndex])
             .filter((url: string) => url && url.trim()) // Filter out empty values
             .map((url: string) => url.trim());
           
@@ -606,7 +604,7 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
                           <div className="text-sm text-green-600">✓ Image assigned</div>
                         )}
                         {rect.type === 'text' && rect.text && (
-                          <div className="text-sm text-green-600">✓ Text: "{rect.text}"</div>
+                          <div className="text-sm text-green-600">✓ Text: &quot;{rect.text}&quot;</div>
                         )}
                       </div>
                       <Button
@@ -734,7 +732,7 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
                 {sheetImages.length === 0 && (
                   <div className="text-center text-muted-foreground py-4">
                     <FileSpreadsheet className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Upload a Google Sheet with an 'image' column to use custom images</p>
+                    <p className="text-sm">Upload a Google Sheet with an &apos;image&apos; column to use custom images</p>
                     <p className="text-xs">Currently showing default images</p>
                   </div>
                 )}
@@ -762,7 +760,7 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
             <div className="p-3 bg-muted rounded-lg text-sm">
               <div className="font-medium mb-2">Required Format:</div>
               <div className="text-muted-foreground">
-                <div>• Must have a column named "image" (can be anywhere)</div>
+                <div>• Must have a column named &quot;image&quot; (can be anywhere)</div>
                 <div>• Each row should contain a valid image URL in the image column</div>
                 <div>• Google Drive share links are automatically converted</div>
                 <div>• Additional columns (name, price, etc.) are allowed</div>

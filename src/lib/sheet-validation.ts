@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 export interface ValidationResult {
   isValid: boolean;
   errors: string[];
-  data?: any[][];
+  data?: unknown[][];
   actualColumns?: string[];
   actualRowCount?: number;
 }
@@ -31,7 +31,7 @@ export function validateUploadedSheet(
         const worksheet = workbook.Sheets[sheetName];
         
         // Convert to array of arrays
-        const sheetData: any[][] = XLSX.utils.sheet_to_json(worksheet, { 
+        const sheetData: unknown[][] = XLSX.utils.sheet_to_json(worksheet, { 
           header: 1,
           defval: '' 
         });

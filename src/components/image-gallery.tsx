@@ -108,7 +108,7 @@ export function ImageGallery({ images, className }: ImageGalleryProps) {
         // Show validation errors
         setValidationErrors(formatValidationErrors(validationResult.errors))
       }
-    } catch (error) {
+    } catch {
       setValidationErrors("An error occurred while validating the file. Please try again.")
     } finally {
       setIsValidating(false)

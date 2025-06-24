@@ -157,7 +157,7 @@ export function TemplateEditor({
   useEffect(() => {
     // Auto-process when component mounts
     processTemplate();
-  }, [templateUrl, vegetables]);
+  }, [templateUrl, vegetables, processTemplate]);
 
   return (
     <div className="space-y-4">

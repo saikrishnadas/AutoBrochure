@@ -2,11 +2,11 @@
 // In a real app, you'd use a database or session storage
 
 interface UploadedData {
-  templateImageUrl: string | null  // URL of the template image (not uploaded file)
-  uploadedSheetFile: File | null   // The actual uploaded Excel/CSV file
-  googleSheetData: any[][] | null
-  templateName: string | null
-  templateId: string | null
+  templateImageUrl: string | null;
+  uploadedSheetFile: File | null;
+  googleSheetData: unknown | null;
+  templateName: string | null;
+  templateId: string | null;
 }
 
 let uploadedData: UploadedData = {

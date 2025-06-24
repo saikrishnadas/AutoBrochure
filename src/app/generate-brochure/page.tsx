@@ -2,14 +2,37 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { CheckCircle, FileText, Download, Loader2, Eye, Brain, Palette } from "lucide-react"
+import { CheckCircle, FileText, Download, Loader2, Brain, Palette } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useState } from "react"
 import { getUploadedData, getTemplateImageFile } from "@/lib/image-store"
 import { toast } from "sonner"
-import Image from "next/image"
 import { TemplateEditor } from "@/components/template-editor"
+
+interface TemplateEditorData {
+  originalImage: string;
+  vegetables: Array<{
+    id: number;
+    name: string;
+    price: string;
+    description?: string;
+  }>;
+  vegetableRegions: Array<{
+    name: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>;
+  priceRegions: Array<{
+    name: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>;
+}
 
 function GenerateBrochureContent() {
   const searchParams = useSearchParams()
@@ -21,7 +44,7 @@ function GenerateBrochureContent() {
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
   const [imageDescription, setImageDescription] = useState<string>("")
   const [showTemplateEditor, setShowTemplateEditor] = useState(false)
-  const [templateEditorData, setTemplateEditorData] = useState<any>(null)
+  const [templateEditorData, setTemplateEditorData] = useState<TemplateEditorData | null>(null)
 
   const handleGenerateBrochure = async () => {
     setIsGenerating(true)
@@ -34,7 +57,10 @@ function GenerateBrochureContent() {
       console.log('Template image URL:', uploadedData.templateImageUrl)
       console.log('Template name:', uploadedData.templateName)
       console.log('Template ID:', uploadedData.templateId)
-      console.log('Sheet data rows:', uploadedData.googleSheetData?.length)
+      
+      // Type assertion for googleSheetData
+      const sheetData = uploadedData.googleSheetData as unknown[][];
+      console.log('Sheet data rows:', sheetData?.length)
       
       // Verify we're using the correct template
       if (uploadedData.templateImageUrl !== '/template.png') {
@@ -66,7 +92,7 @@ function GenerateBrochureContent() {
       // Prepare form data
       const formData = new FormData()
       formData.append('templateImage', templateImageFile)
-      formData.append('googleSheetData', JSON.stringify(uploadedData.googleSheetData))
+      formData.append('googleSheetData', JSON.stringify(sheetData))
       formData.append('templateName', uploadedData.templateName || templateName)
 
       // Update progress
@@ -111,12 +137,15 @@ function GenerateBrochureContent() {
         return
       }
 
+      // Type assertion for googleSheetData
+      const sheetData = uploadedData.googleSheetData as unknown[][];
+      
       // Extract vegetables from the sheet data
-      const vegetables = uploadedData.googleSheetData.slice(1).map((row, index) => ({
+      const vegetables = sheetData.slice(1).map((row: unknown[], index: number) => ({
         id: index + 1,
-        name: row[0] || `Item ${index + 1}`,
-        price: row[1] || '',
-        description: row[2] || ''
+        name: (row[0] as string) || `Item ${index + 1}`,
+        price: (row[1] as string) || '',
+        description: (row[2] as string) || ''
       }))
 
       console.log('🆓 Starting FREE AI generation with vegetables:', vegetables)
@@ -168,12 +197,15 @@ function GenerateBrochureContent() {
         return
       }
 
+      // Type assertion for googleSheetData
+      const sheetData = uploadedData.googleSheetData as unknown[][];
+      
       // Extract vegetables from the sheet data
-      const vegetables = uploadedData.googleSheetData.slice(1).map((row, index) => ({
+      const vegetables = sheetData.slice(1).map((row: unknown[], index: number) => ({
         id: index + 1,
-        name: row[0] || `Item ${index + 1}`,
-        price: row[1] || '',
-        description: row[2] || ''
+        name: (row[0] as string) || `Item ${index + 1}`,
+        price: (row[1] as string) || '',
+        description: (row[2] as string) || ''
       }))
 
       console.log('🎨 Starting Canvas-based template editing with vegetables:', vegetables)
@@ -227,12 +259,15 @@ function GenerateBrochureContent() {
         return
       }
 
+      // Type assertion for googleSheetData
+      const sheetData = uploadedData.googleSheetData as unknown[][];
+      
       // Extract vegetables from the sheet data
-      const vegetables = uploadedData.googleSheetData.slice(1).map((row, index) => ({
+      const vegetables = sheetData.slice(1).map((row: unknown[], index: number) => ({
         id: index + 1,
-        name: row[0] || `Item ${index + 1}`,
-        price: row[1] || '',
-        description: row[2] || ''
+        name: (row[0] as string) || `Item ${index + 1}`,
+        price: (row[1] as string) || '',
+        description: (row[2] as string) || ''
       }))
 
       console.log('🎯 Starting EXACT template preservation with vegetables:', vegetables)
@@ -257,7 +292,7 @@ function GenerateBrochureContent() {
 
       if (result.success && result.preserveTemplate) {
         // Show the template editor component
-        setTemplateEditorData(result)
+        setTemplateEditorData(result as TemplateEditorData)
         setShowTemplateEditor(true)
         setGenerationStep('complete')
         toast.success("Template editor loaded! Your exact template will be preserved.")
@@ -322,7 +357,7 @@ function GenerateBrochureContent() {
       <Card className="w-full max-w-2xl">
         <CardContent className="p-8 text-center">
           {!generatedImageUrl ? (
-            <>
+            <div>
               <div className="flex justify-center mb-6">
                 <CheckCircle className="h-16 w-16 text-green-500" />
               </div>
@@ -442,9 +477,9 @@ function GenerateBrochureContent() {
                   : "Click above to use GPT-4o and DALL-E 3 to generate a new professional food image inspired by your template with different vegetables. Note: The AI will create a new image with similar style and appeal rather than an exact copy."
                 }
               </p>
-            </>
+            </div>
           ) : (
-            <>
+            <div>
               <h1 className="text-2xl font-bold mb-4 text-green-700">
                 🎉 AI Brochure Generated!
               </h1>
@@ -519,7 +554,7 @@ function GenerateBrochureContent() {
                   ✨ This image was created using GPT-4o for analysis and DALL-E 3 for generation
                 </p>
               </div>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
