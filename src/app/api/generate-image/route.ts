@@ -153,7 +153,7 @@ RECOMMENDED SOLUTION:
 `
 
     // Return the original template URL so user can work with it
-    const originalTemplateUrl = `http://localhost:3000/arabiandelightstemplate.jpg`
+    const originalTemplateUrl = `http://localhost:3000/template.png`
     
     return NextResponse.json({ 
       success: true, 

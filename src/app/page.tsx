@@ -3,7 +3,7 @@ import { ImageGallery } from "@/components/image-gallery"
 const TemplateImages = [
   {
     id: "1",
-    src: "/arabiandelightstemplate.jpg",
+    src: "/template.png",
     alt: "Arabian Delights Template",
     title: "Arabian Delights Template",
     description: "Arabian Delights Template for dates and nuts",

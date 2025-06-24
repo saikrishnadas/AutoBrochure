@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
-import { Download, Eye, ZoomIn, Upload, FileSpreadsheet } from "lucide-react"
+import { Download, Eye, ZoomIn, Upload, FileSpreadsheet, Image as ImageIcon } from "lucide-react"
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { downloadGoogleSheet } from "@/lib/sheet-utils"
@@ -71,6 +71,11 @@ export function ImageGallery({ images, className }: ImageGalleryProps) {
     setValidationErrors("")
   }
 
+  const handleImageReplacer = (image: ImageItem) => {
+    // Navigate to image replacer page
+    router.push(`/image-replacer?template=${encodeURIComponent(image.src)}&title=${encodeURIComponent(image.title)}`)
+  }
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file || !uploadingImage) return
@@ -91,7 +96,7 @@ export function ImageGallery({ images, className }: ImageGalleryProps) {
         
         // Store uploaded data for image generation
         setUploadedData({
-          templateImageUrl: "/arabiandelightstemplate.jpg",  // Force use of Arabian Delights template
+          templateImageUrl: "/template.png",  // Force use of Arabian Delights template
           uploadedSheetFile: file,      // Store the uploaded Excel/CSV file
           googleSheetData: validationResult.data,
           templateName: uploadingImage.title,
@@ -210,6 +215,15 @@ export function ImageGallery({ images, className }: ImageGalleryProps) {
                   >
                     <Upload className="h-4 w-4" />
                     Upload Sheet
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleImageReplacer(image)}
+                    className="flex items-center gap-2 w-full mt-2"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                    Image Replacer
                   </Button>
                 </div>
               </CardContent>

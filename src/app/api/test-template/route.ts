@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     const host = request.headers.get('host') || 'localhost:3000';
     const protocol = request.headers.get('x-forwarded-proto') || 'http';
     const baseUrl = `${protocol}://${host}`;
-    const templateImageUrl = `${baseUrl}/arabiandelightstemplate.jpg`;
+    const templateImageUrl = `${baseUrl}/template.png`;
     
     console.log('🧪 Testing template URL:', templateImageUrl);
     

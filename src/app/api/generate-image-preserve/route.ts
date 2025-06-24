@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       const host = request.headers.get('host') || 'localhost:3000';
       const protocol = request.headers.get('x-forwarded-proto') || 'http';
       const baseUrl = `${protocol}://${host}`;
-      templateImageUrl = `${baseUrl}/arabiandelightstemplate.jpg`;
+      templateImageUrl = `${baseUrl}/template.png`;
       templateName = 'Arabian Delights Template';
     }
 

@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         solution: "Use ChatGPT UI directly or alternative approaches above"
       },
       
-      template_url: "http://localhost:3000/arabiandelightstemplate.jpg",
+      template_url: "http://localhost:3000/template.png",
       google_sheet_data: googleSheetData
     }
 

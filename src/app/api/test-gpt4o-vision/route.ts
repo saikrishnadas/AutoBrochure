@@ -10,7 +10,7 @@ export async function GET() {
     console.log('=== TESTING GPT-4O VISION WITH ARABIAN DELIGHTS TEMPLATE ===')
     
     // Fetch the Arabian Delights template
-    const response = await fetch('http://localhost:3000/arabiandelightstemplate.jpg')
+    const response = await fetch('http://localhost:3000/template.png')
     const blob = await response.blob()
     const arrayBuffer = await blob.arrayBuffer()
     const base64Image = Buffer.from(arrayBuffer).toString('base64')

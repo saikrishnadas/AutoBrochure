@@ -5,7 +5,7 @@ export async function GET() {
     console.log('=== VERIFYING ARABIAN DELIGHTS TEMPLATE ===')
     
     // Try to fetch the Arabian Delights template directly
-    const templateUrl = '/arabiandelightstemplate.jpg'
+    const templateUrl = '/template.png'
     const fullUrl = `${process.env.NODE_ENV === 'production' ? 'https://yourapp.com' : 'http://localhost:3000'}${templateUrl}`
     
     console.log('Fetching template from:', fullUrl)

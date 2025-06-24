@@ -37,9 +37,9 @@ function GenerateBrochureContent() {
       console.log('Sheet data rows:', uploadedData.googleSheetData?.length)
       
       // Verify we're using the correct template
-      if (uploadedData.templateImageUrl !== '/arabiandelightstemplate.jpg') {
+      if (uploadedData.templateImageUrl !== '/template.png') {
         console.warn('WARNING: Not using the correct template image!')
-        console.warn('Expected: /arabiandelightstemplate.jpg')
+        console.warn('Expected: /template.png')
         console.warn('Actual:', uploadedData.templateImageUrl)
       }
       
