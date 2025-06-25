@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Download, Trash2, Square, Image as ImageIcon, FileSpreadsheet } from 'lucide-react';
+import { Download, Trash2, Square, Image as ImageIcon, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { validateUploadedSheet, formatValidationErrors } from '@/lib/sheet-validation';
@@ -58,6 +58,7 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
   const [sheetImages, setSheetImages] = useState<string[]>([]);
   const [isUploadingSheet, setIsUploadingSheet] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [isTestingUrls, setIsTestingUrls] = useState(false);
 
   // Load template image and setup canvas
   useEffect(() => {
@@ -251,6 +252,149 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
     toast.success("Area deleted!");
   };
 
+  // Function to load image with multiple fallback strategies for CORS issues
+  const loadImageWithFallbacks = async (imageUrl: string): Promise<HTMLImageElement> => {
+    console.log('🔄 Attempting to load image with fallbacks:', imageUrl);
+    
+    // Strategy 1: Try loading without crossOrigin (works for some images)
+    try {
+      console.log('📥 Strategy 1: Loading without crossOrigin...');
+      const img = document.createElement('img');
+      
+      await new Promise((resolve, reject) => {
+        img.onload = () => {
+          console.log('✅ Strategy 1 successful');
+          resolve(null);
+        };
+        img.onerror = () => {
+          console.log('❌ Strategy 1 failed');
+          reject(new Error('Strategy 1 failed'));
+        };
+        img.src = imageUrl;
+      });
+      
+      return img;
+    } catch {
+      console.log('🔄 Strategy 1 failed, trying Strategy 2...');
+    }
+    
+    // Strategy 2: Try with crossOrigin = 'anonymous'
+    try {
+      console.log('📥 Strategy 2: Loading with crossOrigin anonymous...');
+      const img = document.createElement('img');
+      img.crossOrigin = 'anonymous';
+      
+      await new Promise((resolve, reject) => {
+        img.onload = () => {
+          console.log('✅ Strategy 2 successful');
+          resolve(null);
+        };
+        img.onerror = () => {
+          console.log('❌ Strategy 2 failed');
+          reject(new Error('Strategy 2 failed'));
+        };
+        img.src = imageUrl;
+      });
+      
+      return img;
+    } catch {
+      console.log('🔄 Strategy 2 failed, trying Strategy 3...');
+    }
+    
+    // Strategy 3: Fetch as blob and create object URL
+    try {
+      console.log('📥 Strategy 3: Fetching as blob...');
+      const response = await fetch(imageUrl, {
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      
+      const img = document.createElement('img');
+      await new Promise((resolve, reject) => {
+        img.onload = () => {
+          console.log('✅ Strategy 3 successful');
+          resolve(null);
+        };
+        img.onerror = () => {
+          console.log('❌ Strategy 3 failed');
+          reject(new Error('Strategy 3 failed'));
+        };
+        img.src = objectUrl;
+      });
+      
+      return img;
+    } catch (error) {
+      console.log('❌ Strategy 3 failed:', error);
+    }
+    
+    // Strategy 4: Try alternative Google Drive format
+    if (imageUrl.includes('drive.google.com')) {
+      try {
+        console.log('📥 Strategy 4: Trying alternative Google Drive format...');
+        const fileIdMatch = imageUrl.match(/id=([a-zA-Z0-9_-]+)/);
+        if (fileIdMatch) {
+          const fileId = fileIdMatch[1];
+          const alternativeUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+          console.log('🔄 Trying alternative URL:', alternativeUrl);
+          
+          const img = document.createElement('img');
+          img.crossOrigin = 'anonymous';
+          
+          await new Promise((resolve, reject) => {
+            img.onload = () => {
+              console.log('✅ Strategy 4 successful');
+              resolve(null);
+            };
+            img.onerror = () => {
+              console.log('❌ Strategy 4 failed');
+              reject(new Error('Strategy 4 failed'));
+            };
+            img.src = alternativeUrl;
+          });
+          
+          return img;
+        }
+      } catch (error) {
+        console.log('❌ Strategy 4 failed:', error);
+      }
+    }
+    
+    // Strategy 5: Use server-side proxy to bypass CORS
+    try {
+      console.log('📥 Strategy 5: Using server-side proxy...');
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+      console.log('🔄 Proxy URL:', proxyUrl);
+      
+      const img = document.createElement('img');
+      img.crossOrigin = 'anonymous';
+      
+      await new Promise((resolve, reject) => {
+        img.onload = () => {
+          console.log('✅ Strategy 5 successful - proxy worked!');
+          resolve(null);
+        };
+        img.onerror = () => {
+          console.log('❌ Strategy 5 failed - proxy failed');
+          reject(new Error('Strategy 5 failed'));
+        };
+        img.src = proxyUrl;
+      });
+      
+      return img;
+    } catch (error) {
+      console.log('❌ Strategy 5 failed:', error);
+    }
+    
+    throw new Error('All image loading strategies failed');
+  };
+
   const generateFinalImage = async () => {
     if (!canvasRef.current || !imageRef.current) return;
 
@@ -273,23 +417,40 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
       // Replace areas with selected images or text
       for (const rect of rectangles) {
         if (rect.type === 'image' && rect.selectedImage) {
-          const img = document.createElement('img');
-          img.crossOrigin = 'anonymous';
+          console.log('Loading image:', rect.selectedImage);
           
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-            img.src = rect.selectedImage!;
-          });
-
-          // Draw the replacement image in the specified rectangle
-          finalCtx.drawImage(
-            img,
-            rect.x,
-            rect.y,
-            rect.width,
-            rect.height
-          );
+          try {
+            const img = await loadImageWithFallbacks(rect.selectedImage);
+            
+            // Draw the replacement image in the specified rectangle
+            finalCtx.drawImage(
+              img,
+              rect.x,
+              rect.y,
+              rect.width,
+              rect.height
+            );
+            
+            console.log('Image drawn successfully');
+            
+          } catch (imageError) {
+            console.error('Error loading individual image:', imageError);
+            // Continue with other rectangles even if one image fails
+            
+            // Draw a placeholder rectangle instead
+            finalCtx.fillStyle = '#f0f0f0';
+            finalCtx.fillRect(rect.x, rect.y, rect.width, rect.height);
+            finalCtx.strokeStyle = '#ccc';
+            finalCtx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+            
+            // Draw error text
+            finalCtx.fillStyle = '#666';
+            finalCtx.font = '12px Arial';
+            finalCtx.textAlign = 'center';
+            finalCtx.fillText('Image failed to load', rect.x + rect.width / 2, rect.y + rect.height / 2);
+            
+            toast.error(`Failed to load image: ${rect.selectedImage?.substring(0, 50)}...`);
+          }
         } else if (rect.type === 'text' && rect.text) {
           // Draw background
           if (rect.backgroundColor) {
@@ -323,6 +484,11 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
 
     } catch (error) {
       console.error('Error generating final image:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        error: error
+      });
       toast.error("Failed to generate final image. Please try again.");
     }
   };
@@ -459,16 +625,48 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
     });
   };
 
+  // Function to test if an image URL can be loaded
+  const testImageUrl = async (url: string): Promise<boolean> => {
+    try {
+      await loadImageWithFallbacks(url);
+      return true;
+    } catch (error) {
+      console.log('❌ Image URL test failed:', url, error);
+      return false;
+    }
+  };
+
   // Utility function to convert Google Drive share URLs to direct image URLs
   const convertGoogleDriveUrl = (url: string): string => {
+    console.log('Converting URL:', url);
+    
     // Check if it's a Google Drive share link
     const driveShareMatch = url.match(/https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)\/view/);
     if (driveShareMatch) {
       const fileId = driveShareMatch[1];
-      return `https://drive.google.com/uc?export=view&id=${fileId}`;
+      const convertedUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+      console.log('Converted Google Drive URL:', convertedUrl);
+      return convertedUrl;
     }
     
-    // If it's already a direct link or different format, return as is
+    // Check if it's already a direct Google Drive link
+    const directDriveMatch = url.match(/https:\/\/drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/);
+    if (directDriveMatch) {
+      console.log('Already a direct Google Drive URL:', url);
+      return url;
+    }
+    
+    // Check for other Google Drive formats
+    const alternativeDriveMatch = url.match(/https:\/\/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+    if (alternativeDriveMatch) {
+      const fileId = alternativeDriveMatch[1];
+      const convertedUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+      console.log('Converted alternative Google Drive URL:', convertedUrl);
+      return convertedUrl;
+    }
+    
+    console.log('URL not converted (not a recognized Google Drive format):', url);
+    // If it's not a Google Drive link or different format, return as is
     return url;
   };
 
@@ -766,6 +964,13 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
                 <div>• Additional columns (name, price, etc.) are allowed</div>
                 <div>• Supported formats: .csv, .xlsx, .xls</div>
               </div>
+              <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                <div className="font-medium text-blue-800 mb-1">💡 Google Drive Image Tips:</div>
+                <div className="text-blue-700">
+                  <div>• Use &quot;Anyone with the link can view&quot; sharing</div>
+                  <div>• If images fail to load, try the &quot;Test All Image URLs&quot; button</div>
+                </div>
+              </div>
             </div>
             
             <div>
@@ -804,6 +1009,40 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
                 <div className="text-sm text-green-700 mt-1">
                   Found {sheetImages.length} images ready for use.
                 </div>
+                <Button
+                  onClick={async () => {
+                    setIsTestingUrls(true);
+                    console.log('Testing all image URLs...');
+                    let validCount = 0;
+                    let invalidCount = 0;
+                    
+                    for (const imageUrl of sheetImages) {
+                      const isValid = await testImageUrl(imageUrl);
+                      if (isValid) {
+                        validCount++;
+                      } else {
+                        invalidCount++;
+                      }
+                    }
+                    
+                    toast.success(`Image URL Test Complete: ${validCount} valid, ${invalidCount} invalid`);
+                    console.log(`Image URL Test Results: ${validCount} valid, ${invalidCount} invalid`);
+                    setIsTestingUrls(false);
+                  }}
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  disabled={isTestingUrls}
+                >
+                  {isTestingUrls ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Testing URLs...
+                    </>
+                  ) : (
+                    "Test All Image URLs"
+                  )}
+                </Button>
               </div>
             )}
           </div>
