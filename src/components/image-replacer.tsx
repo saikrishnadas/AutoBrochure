@@ -672,6 +672,109 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
 
   return (
     <div className="space-y-6">
+      {/* Sheet Upload */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5" />
+            Upload Google Sheet for Images
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="p-3 bg-muted rounded-lg text-sm">
+              <div className="font-medium mb-2">Required Format:</div>
+              <div className="text-muted-foreground">
+                <div>• Must have a column named &quot;image&quot; (can be anywhere)</div>
+                <div>• Each row should contain a valid image URL in the image column</div>
+                <div>• Google Drive share links are automatically converted</div>
+                <div>• Additional columns (name, price, etc.) are allowed</div>
+                <div>• Supported formats: .csv, .xlsx, .xls</div>
+              </div>
+              <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                <div className="font-medium text-blue-800 mb-1">💡 Google Drive Image Tips:</div>
+                <div className="text-blue-700">
+                  <div>• Use &quot;Anyone with the link can view&quot; sharing</div>
+                  <div>• If images fail to load, try the &quot;Test All Image URLs&quot; button</div>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="sheet-upload">Select Google Sheet File</Label>
+              <Input
+                id="sheet-upload"
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleSheetUpload}
+                disabled={isUploadingSheet}
+              />
+            </div>
+            
+            {isUploadingSheet && (
+              <div className="text-center text-sm text-muted-foreground">
+                Processing sheet...
+              </div>
+            )}
+            
+            {validationErrors.length > 0 && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <div className="text-sm text-destructive font-medium">Validation Errors:</div>
+                <div className="text-sm text-destructive mt-1">
+                  {validationErrors.map((error, index) => (
+                    <div key={index}>• {error}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {sheetImages.length > 0 && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="text-sm text-green-800 font-medium">
+                  ✅ Sheet loaded successfully!
+                </div>
+                <div className="text-sm text-green-700 mt-1">
+                  Found {sheetImages.length} images ready for use.
+                </div>
+                <Button
+                  onClick={async () => {
+                    setIsTestingUrls(true);
+                    console.log('Testing all image URLs...');
+                    let validCount = 0;
+                    let invalidCount = 0;
+                    
+                    for (const imageUrl of sheetImages) {
+                      const isValid = await testImageUrl(imageUrl);
+                      if (isValid) {
+                        validCount++;
+                      } else {
+                        invalidCount++;
+                      }
+                    }
+                    
+                    toast.success(`Image URL Test Complete: ${validCount} valid, ${invalidCount} invalid`);
+                    console.log(`Image URL Test Results: ${validCount} valid, ${invalidCount} invalid`);
+                    setIsTestingUrls(false);
+                  }}
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  disabled={isTestingUrls}
+                >
+                  {isTestingUrls ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Testing URLs...
+                    </>
+                  ) : (
+                    "Test All Image URLs"
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -944,110 +1047,6 @@ export function ImageReplacer({ templateUrl, title }: ImageReplacerProps) {
           </CardContent>
         </Card>
       </div>
-
-      {/* Sheet Upload */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
-            Upload Google Sheet for Images
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="p-3 bg-muted rounded-lg text-sm">
-              <div className="font-medium mb-2">Required Format:</div>
-              <div className="text-muted-foreground">
-                <div>• Must have a column named &quot;image&quot; (can be anywhere)</div>
-                <div>• Each row should contain a valid image URL in the image column</div>
-                <div>• Google Drive share links are automatically converted</div>
-                <div>• Additional columns (name, price, etc.) are allowed</div>
-                <div>• Supported formats: .csv, .xlsx, .xls</div>
-              </div>
-              <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-                <div className="font-medium text-blue-800 mb-1">💡 Google Drive Image Tips:</div>
-                <div className="text-blue-700">
-                  <div>• Use &quot;Anyone with the link can view&quot; sharing</div>
-                  <div>• If images fail to load, try the &quot;Test All Image URLs&quot; button</div>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <Label htmlFor="sheet-upload">Select Google Sheet File</Label>
-              <Input
-                id="sheet-upload"
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                onChange={handleSheetUpload}
-                disabled={isUploadingSheet}
-              />
-            </div>
-            
-            {isUploadingSheet && (
-              <div className="text-center text-sm text-muted-foreground">
-                Processing sheet...
-              </div>
-            )}
-            
-            {validationErrors.length > 0 && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <div className="text-sm text-destructive font-medium">Validation Errors:</div>
-                <div className="text-sm text-destructive mt-1">
-                  {validationErrors.map((error, index) => (
-                    <div key={index}>• {error}</div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {sheetImages.length > 0 && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="text-sm text-green-800 font-medium">
-                  ✅ Sheet loaded successfully!
-                </div>
-                <div className="text-sm text-green-700 mt-1">
-                  Found {sheetImages.length} images ready for use.
-                </div>
-                <Button
-                  onClick={async () => {
-                    setIsTestingUrls(true);
-                    console.log('Testing all image URLs...');
-                    let validCount = 0;
-                    let invalidCount = 0;
-                    
-                    for (const imageUrl of sheetImages) {
-                      const isValid = await testImageUrl(imageUrl);
-                      if (isValid) {
-                        validCount++;
-                      } else {
-                        invalidCount++;
-                      }
-                    }
-                    
-                    toast.success(`Image URL Test Complete: ${validCount} valid, ${invalidCount} invalid`);
-                    console.log(`Image URL Test Results: ${validCount} valid, ${invalidCount} invalid`);
-                    setIsTestingUrls(false);
-                  }}
-                  size="sm"
-                  variant="outline"
-                  className="mt-2"
-                  disabled={isTestingUrls}
-                >
-                  {isTestingUrls ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Testing URLs...
-                    </>
-                  ) : (
-                    "Test All Image URLs"
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 } 
