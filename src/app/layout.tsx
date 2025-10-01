@@ -27,9 +27,14 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
         {children}
-        <Toaster />
+        <Toaster 
+          duration={4000} 
+          position="top-right" 
+          closeButton 
+        />
       </body>
     </html>
   );

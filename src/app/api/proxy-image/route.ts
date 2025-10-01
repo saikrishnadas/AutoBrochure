@@ -2,64 +2,68 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const imageUrl = searchParams.get('url');
-    
+
     if (!imageUrl) {
-      return NextResponse.json({ error: 'Missing image URL parameter' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing URL parameter' }, { status: 400 });
     }
 
-    console.log('🖼️ Proxying image request for:', imageUrl);
+    // Decode the URL
+    const decodedUrl = decodeURIComponent(imageUrl);
+    
+    // Convert Google Drive URLs to direct format
+    let finalUrl = decodedUrl;
+    
+    // Handle different Google Drive URL formats
+    const googleDrivePatterns = [
+      { pattern: /drive\.google\.com\/uc\?export=view&id=([a-zA-Z0-9_-]+)/, replacement: 'https://lh3.googleusercontent.com/d/$1' },
+      { pattern: /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/, replacement: 'https://lh3.googleusercontent.com/d/$1' },
+      { pattern: /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/, replacement: 'https://lh3.googleusercontent.com/d/$1' }
+    ];
+    
+    for (const { pattern, replacement } of googleDrivePatterns) {
+      if (pattern.test(decodedUrl)) {
+        finalUrl = decodedUrl.replace(pattern, replacement);
+        console.log('Converted Google Drive URL:', decodedUrl, '→', finalUrl);
+        break;
+      }
+    }
 
-    // Fetch the image from the external URL
-    const response = await fetch(imageUrl, {
+    // Fetch the image
+    const response = await fetch(finalUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'image/*,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'DNT': '1',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
+        'Accept': 'image/*',
       },
     });
 
     if (!response.ok) {
-      console.error('❌ Failed to fetch image:', response.status, response.statusText);
-      return NextResponse.json(
-        { error: `Failed to fetch image: ${response.status} ${response.statusText}` },
-        { status: response.status }
-      );
+      console.error('Failed to fetch image:', response.status, response.statusText);
+      return NextResponse.json({ error: 'Failed to fetch image' }, { status: response.status });
     }
 
-    // Get the image data
-    const imageBuffer = await response.arrayBuffer();
+    // Get the content type
     const contentType = response.headers.get('content-type') || 'image/jpeg';
     
-    console.log('✅ Image fetched successfully:', {
-      size: imageBuffer.byteLength,
-      contentType: contentType
-    });
+    // Get the image data
+    const imageBuffer = await response.arrayBuffer();
 
-    // Return the image with appropriate headers
+    // Return the image with proper headers
     return new NextResponse(imageBuffer, {
+      status: 200,
       headers: {
         'Content-Type': contentType,
         'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET',
-        'Access-Control-Allow-Headers': 'Content-Type',
       },
     });
-
   } catch (error) {
-    console.error('❌ Image proxy error:', error);
+    console.error('Error in proxy-image API:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to proxy image',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
-} 
+}
+

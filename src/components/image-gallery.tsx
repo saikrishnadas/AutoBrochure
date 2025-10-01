@@ -20,7 +20,7 @@ import { Download, Eye, ZoomIn, Upload, FileSpreadsheet, Image as ImageIcon } fr
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { downloadGoogleSheet } from "@/lib/sheet-utils"
-import { validateUploadedSheet, formatValidationErrors } from "@/lib/sheet-validation"
+import { validateUploadedSheet, validateProductSheetFromUrl, formatValidationErrors } from "@/lib/sheet-validation"
 import { setUploadedData } from "@/lib/image-store"
 import { toast } from "sonner"
 
@@ -46,6 +46,8 @@ export function ImageGallery({ images, className }: ImageGalleryProps) {
   const [uploadingImage, setUploadingImage] = useState<ImageItem | null>(null)
   const [validationErrors, setValidationErrors] = useState<string>("")
   const [isValidating, setIsValidating] = useState(false)
+  const [googleSheetsUrl, setGoogleSheetsUrl] = useState('')
+  const [uploadMethod, setUploadMethod] = useState<'file' | 'url'>('file')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -119,9 +121,44 @@ export function ImageGallery({ images, className }: ImageGalleryProps) {
     }
   }
 
+  const handleGoogleSheetsUrlSubmit = async () => {
+    if (!googleSheetsUrl.trim() || !uploadingImage) return
+
+    setIsValidating(true)
+    setValidationErrors("")
+
+    try {
+      const validationResult = await validateProductSheetFromUrl(googleSheetsUrl.trim())
+
+      if (validationResult.isValid) {
+        // Success - navigate to thank you page
+        toast.success("Google Sheets loaded successfully!")
+        
+        // Store uploaded data for image generation
+        setUploadedData({
+          templateImageUrl: "/template.png",  // Force use of Arabian Delights template
+          googleSheetData: validationResult.data,
+          templateName: uploadingImage.title,
+          templateId: uploadingImage.id
+        })
+        
+        router.push(`/generate-brochure?template=${encodeURIComponent(uploadingImage.title)}&rows=${validationResult.actualRowCount}`)
+      } else {
+        // Show validation errors
+        setValidationErrors(formatValidationErrors(validationResult.errors))
+      }
+    } catch {
+      setValidationErrors("An error occurred while loading the Google Sheets. Please try again.")
+    } finally {
+      setIsValidating(false)
+    }
+  }
+
   const closeUploadDialog = () => {
     setUploadingImage(null)
     setValidationErrors("")
+    setGoogleSheetsUrl("")
+    setUploadMethod('file')
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -264,10 +301,10 @@ export function ImageGallery({ images, className }: ImageGalleryProps) {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <FileSpreadsheet className="h-5 w-5" />
-              Upload Sheet: {uploadingImage?.title}
+              Load Data: {uploadingImage?.title}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Please upload an Excel (.xlsx) or CSV file that matches the required format.
+              Upload a file or provide a Google Sheets URL that matches the required format.
             </AlertDialogDescription>
           </AlertDialogHeader>
           
@@ -281,17 +318,70 @@ export function ImageGallery({ images, className }: ImageGalleryProps) {
                 </div>
               </div>
             )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="file-upload">Select File</Label>
-              <Input
-                ref={fileInputRef}
-                id="file-upload"
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleFileSelect}
-                disabled={isValidating}
-              />
+
+            <div className="space-y-3">
+              <div>
+                <Label>Data Source</Label>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    type="button"
+                    variant={uploadMethod === 'file' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setUploadMethod('file')}
+                    disabled={isValidating}
+                  >
+                    Upload File
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={uploadMethod === 'url' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setUploadMethod('url')}
+                    disabled={isValidating}
+                  >
+                    Google Sheets URL
+                  </Button>
+                </div>
+              </div>
+
+              {uploadMethod === 'file' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="file-upload">Select File</Label>
+                  <Input
+                    ref={fileInputRef}
+                    id="file-upload"
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleFileSelect}
+                    disabled={isValidating}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="google-sheets-url">Google Sheets URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="google-sheets-url"
+                      type="url"
+                      placeholder="https://docs.google.com/spreadsheets/d/..."
+                      value={googleSheetsUrl}
+                      onChange={(e) => setGoogleSheetsUrl(e.target.value)}
+                      disabled={isValidating}
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleGoogleSheetsUrlSubmit}
+                      disabled={isValidating || !googleSheetsUrl.trim()}
+                      size="sm"
+                    >
+                      Load
+                    </Button>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Make sure your Google Sheet is publicly accessible (Anyone with the link can view)
+                  </div>
+                </div>
+              )}
             </div>
             
             {validationErrors && (

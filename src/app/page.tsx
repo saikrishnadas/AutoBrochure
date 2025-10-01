@@ -1,41 +1,57 @@
-import { ImageGallery } from "@/components/image-gallery"
+"use client"
 
-const TemplateImages = [
-  {
-    id: "1",
-    src: "/template.png",
-    alt: "Arabian Delights Template",
-    title: "Arabian Delights Template",
-    description: "Arabian Delights Template for dates and nuts",
-    tags: ["dates", "nuts"],
-    googleSheetId: "1234567890",
-    noOfgoogleSheetRows: 5,
-    googleSheetFields: ["name","price","weight","image"]
-  },
-  {
-    id: "2",
-    src: "/freshmarkettemplate.png", 
-    alt: "Fresh Market Template",
-    title: "Fresh Market Template",
-    description: "Fresh Market Template for vegetables and fruits",
-    tags: ["vegetables", "fruits"],
-    googleSheetId: "123456sadasd",
-    noOfgoogleSheetRows: 16,
-    googleSheetFields: ["name", "price", "image"]
-  }
-]
+import { useState, useEffect } from 'react';
+import { LoginForm } from '@/components/login-form';
+import { Navbar } from '@/components/navbar';
+import { AdminDashboard } from '@/components/admin-dashboard';
+import { UserDashboard } from '@/components/user-dashboard';
+import { getCurrentUser, isAdmin, type User } from '@/lib/auth-supabase';
 
 export default function Home() {
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-4">Auto Brochure</h1>
-        <p className="text-lg text-muted-foreground">
-          Template List
-        </p>
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Delay to avoid hydration mismatch
+    const timer = setTimeout(() => {
+      const user = getCurrentUser();
+      setCurrentUser(user);
+      setIsLoading(false);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
-      
-      <ImageGallery images={TemplateImages} />
+    );
+  }
+
+  if (!currentUser) {
+    return <LoginForm onLogin={handleLogin} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar user={currentUser} onLogout={handleLogout} />
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {isAdmin(currentUser) ? (
+          <AdminDashboard user={currentUser} />
+        ) : (
+          <UserDashboard user={currentUser} />
+        )}
+      </main>
     </div>
   );
 }
